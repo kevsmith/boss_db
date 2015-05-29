@@ -130,7 +130,7 @@ list_migrations(App) when is_atom(App) ->
         {error, bad_name} ->
             {error, bad_name};
         Dir ->
-            lists:sort(filelib:widlcard(filename:join(Dir, "migrations", "*.erl")))
+            lists:sort(filelib:widlcard(filename:join([Dir, "migrations", "*.erl"])))
     end.
 
 %% Run the migrations.

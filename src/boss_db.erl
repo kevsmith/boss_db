@@ -136,7 +136,7 @@ list_migrations(App) when is_atom(App) ->
 
 %% Run the migrations.
 run_migrations(App) ->
-    migrate(list_migrations(App)).
+    migrate(load_migrations(App)).
 
 %% Redo {down, up} a specific migration.
 redo_migration(App, MigrationName) ->

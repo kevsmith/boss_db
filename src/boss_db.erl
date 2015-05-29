@@ -5,6 +5,7 @@
 -export([start/1, stop/0]).
 
 -export([
+        list_migrations/1,
         new_migration/2,
         run_migrations/1,
         redo_migration/2,
@@ -130,7 +131,7 @@ list_migrations(App) when is_atom(App) ->
         {error, bad_name} ->
             {error, bad_name};
         Dir ->
-            lists:sort(filelib:widlcard(filename:join([Dir, "migrations", "*.erl"])))
+            lists:sort(filelib:wildcard(filename:join([Dir, "migrations", "*.erl"])))
     end.
 
 %% Run the migrations.

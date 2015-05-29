@@ -5,12 +5,15 @@
 -export([start/1, stop/0]).
 
 -export([
+        new_migration/2,
+        run_migrations/1,
+        redo_migration/2,
         migrate/1,
         migrate/2,
-        find/1, 
-        find/2, 
-        find/3, 
-        find/4, 
+        find/1,
+        find/2,
+        find/3,
+        find/4,
         find_by_sql/3,
         find_by_sql/2,
         find_first/1,
@@ -24,13 +27,13 @@
         count/1,
         count/2,
         count/3,
-        counter/1, 
-        counter/2, 
-        incr/1, 
-        incr/2, 
-        incr/3, 
-        delete/1, 
-        delete/2, 
+        counter/1,
+        counter/2,
+        incr/1,
+        incr/2,
+        incr/3,
+        delete/1,
+        delete/2,
         push/0,
         push/1,
         pop/0,
@@ -49,8 +52,8 @@
         transaction/1,
         transaction/2,
         mock_transaction/1,
-        save_record/1, 
-        save_record/2, 
+        save_record/1,
+        save_record/2,
         validate_record/1,
         validate_record/2,
         validate_record_types/1,
@@ -106,6 +109,41 @@ db_call(Msg, Timeout) when is_integer(Timeout), Timeout > 0 ->
             erlang:put(boss_db_transaction_info, NewState),
             Reply
     end.
+
+%% Create a migration.  MigrationName is an atom to use as the name of
+%% the migration.
+new_migration(App, MigrationName) when is_atom(MigrationName) ->
+    {MegaSeconds, Seconds, _Microsecs} = erlang:now(),
+    case code:priv_dir(App) of
+        {error, bad_name} ->
+            {error, bad_name};
+        Dir ->
+            Filename = filename:join([Dir, "migrations", io_lib:format("~p~p_~s.erl",
+                                     [MegaSeconds, Seconds, MigrationName])]),
+            file:write_file(Filename, io_lib:format("%% Migration ~p~n~n{~p,~n  fun(up) -> undefined;~n     (down) -> undefined~n  end}.~n",
+                                                    [MigrationName, MigrationName]))
+    end.
+
+%% Returns a sorted list of all files in priv/migrations/.
+list_migrations(App) when is_atom(App) ->
+    case code:priv_dir(App) of
+        {error, bad_name} ->
+            {error, bad_name};
+        Dir ->
+            lists:sort(filelib:widlcard(filename:join(Dir, "migrations", "*.erl")))
+    end.
+
+%% Run the migrations.
+run_migrations(App) ->
+    migrate(list_migrations(App)).
+
+%% Redo {down, up} a specific migration.
+redo_migration(App, MigrationName) ->
+  Migration = proplists:get_value(MigrationName, load_migrations(App)),
+  transaction(fun() ->
+                  migrate({MigrationName, Migration}, down),
+                  migrate({MigrationName, Migration}, up)
+              end).
 
 %% @doc Apply migrations from list [{Tag, Fun}]
 %% currently runs all migrations 'up'
@@ -597,3 +635,10 @@ normalize_conditions([{Key, Operator, Value, Options}|Rest], Acc) when is_atom(K
 
 return_one([]) -> undefined;
 return_one([Result]) ->Result.
+
+load_migrations(App) ->
+    lists:map(fun(File) ->
+                      lager:info("Reading migration file: ~p~n", [File]),
+                      {ok, Terms} = file:script(File),
+                      Terms
+              end, list_migrations(App)).

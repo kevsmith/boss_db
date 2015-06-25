@@ -639,7 +639,7 @@ return_one([Result]) ->Result.
 
 load_migrations(App) ->
     lists:map(fun(File) ->
-                      lager:info("Reading migration file: ~p~n", [File]),
+                      lager:debug("Reading migration file: ~p~n", [File]),
                       {ok, Terms} = file:script(File),
                       Terms
               end, list_migrations(App)).
